@@ -39,7 +39,7 @@ const validatListing = (req, res, next) => {
     let {error} = listingSchema.validate(req.body);
     if(error) {
         let errMsg = error.details.map((el) => el.message).join(",");
-        throw new ExpressErr(400, result.error);
+        throw new ExpressErr(400, errMsg);
     } else {
         next();
     }
@@ -50,7 +50,7 @@ const validatReview = (req, res, next) => {
     let {error} = reviewSchema.validate(req.body);
     if(error) {
         let errMsg = error.details.map((el) => el.message).join(",");
-        throw new ExpressErr(400, result.error);
+        throw new ExpressErr(400, errMsg);
     } else {
         next();
     }
@@ -71,10 +71,12 @@ app.get("/listing/new", (req, res) => {
 });
 
 // show rout
-app.get("/listing/:id", wrapAsync(async(req, res, next) => {
-    let {id} = req.params;
-    let listing = await Listing.findById(id);
-    res.render("listings/show.ejs", {listing});
+app.get(
+    "/listing/:id", 
+    wrapAsync(async(req, res, next) => {
+        let {id} = req.params;
+        let listing = await Listing.findById(id).populate("reviews");
+        res.render("listings/show.ejs", {listing});
 }));
 
 
@@ -137,6 +139,18 @@ app.post("/listing/:id/reviews", validatReview, wrapAsync(async(req, res) => {
 
     res.redirect(`/listing/${listing._id}`);
 }));
+
+
+// Delete -Review Route
+app.post("/listing/:id/reviews/:reviewId", wrapAsync(async (req, res) => {
+    let {id, reviewId} = req.params;
+
+    await Listing.findByIdAndUpdate(id, {$pull: {reviews: reviewId}});
+    await Review.findByIdAndDelete(reviewId);
+
+    res.redirect(`listing/${id}`);
+}));
+
 
 app.get("/", (req, res) => {
     res.send("Hi, I am root");
